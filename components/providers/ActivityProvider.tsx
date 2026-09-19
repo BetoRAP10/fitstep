@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { usePedometer, type PedometerPermissionStatus } from '@/hooks/usePedometer';
 import { useActivity, type ActivitySnapshot } from '@/hooks/useActivity';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
 import { useDailyStatsStore } from '@/state/dailyStatsStore';
 import { strideLengthMeters, strideCalories, metForCadence, metCaloriesForSeconds } from '@/utils/calories';
 import type { Profile } from '@/state/profileStore';
@@ -21,7 +22,10 @@ const ActivityContext = createContext<ActivityContextValue | null>(null);
 // una sola vez en la raíz de (tabs). Hoy, Ranking y Perfil solo leen de aquí.
 export function ActivityProvider({ children }: { children: ReactNode }) {
   const { profile } = useProfile();
-  const pedometer = usePedometer();
+  const { session } = useAuth();
+  const userId = session?.userId ?? '';
+
+  const pedometer = usePedometer(userId);
   const activity = useActivity({
     lastStepEvent: pedometer.lastEvent,
     enabled: pedometer.permissionStatus === 'granted',
@@ -33,9 +37,12 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   const addActiveSeconds = useDailyStatsStore((s) => s.addActiveSeconds);
   const evaluateGoal = useDailyStatsStore((s) => s.evaluateGoal);
 
+  // Se re-hidrata cada vez que cambia el usuario (no solo la primera vez),
+  // para que cambiar de cuenta en el mismo dispositivo traiga sus propios
+  // datos en vez de seguir mostrando los de la cuenta anterior.
   useEffect(() => {
-    if (!isStatsHydrated) hydrateStats();
-  }, [isStatsHydrated, hydrateStats]);
+    if (userId) hydrateStats(userId);
+  }, [userId, hydrateStats]);
 
   const activityRef = useRef(activity);
   activityRef.current = activity;

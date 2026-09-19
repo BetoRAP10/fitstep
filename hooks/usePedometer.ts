@@ -18,19 +18,23 @@ interface UsePedometerResult {
   requestPermission: () => void;
 }
 
-export function usePedometer(): UsePedometerResult {
+// El conteo de pasos se guarda por usuario (ver services/storage.ts) para
+// que dos cuentas en el mismo dispositivo no hereden pasos entre sí.
+export function usePedometer(userId: string): UsePedometerResult {
   const [permissionStatus, setPermissionStatus] = useState<PedometerPermissionStatus>('checking');
   const [todaySteps, setTodaySteps] = useState(0);
   const [lastEvent, setLastEvent] = useState<StepEvent | null>(null);
 
   const dayKeyRef = useRef(todayKey());
   const watchBaselineRef = useRef<number | null>(null);
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
 
   const addSteps = useCallback((delta: number, timestamp: number) => {
     if (delta <= 0) return;
     setTodaySteps((prev) => {
       const next = prev + delta;
-      setJSON(STORAGE_KEYS.stepsByDay(dayKeyRef.current), next);
+      setJSON(STORAGE_KEYS.stepsByDay(userIdRef.current, dayKeyRef.current), next);
       return next;
     });
     setLastEvent({ timestamp, delta });
@@ -44,19 +48,18 @@ export function usePedometer(): UsePedometerResult {
         dayKeyRef.current = key;
         watchBaselineRef.current = null;
         setTodaySteps(0);
-        setJSON(STORAGE_KEYS.stepsByDay(key), 0);
+        setJSON(STORAGE_KEYS.stepsByDay(userIdRef.current, key), 0);
       }
     }, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Permisos + conteo inicial del día. En iOS se recupera con
-  // getStepCountAsync desde las 00:00; en Android esa API no existe, así que
-  // se parte del contador propio guardado en AsyncStorage.
+  // El permiso es del dispositivo/app, no de la cuenta: se revisa una sola
+  // vez por vida de la app, no cada vez que cambia el usuario.
   useEffect(() => {
     let cancelled = false;
 
-    async function bootstrap() {
+    async function checkPermission() {
       setPermissionStatus('checking');
       const available = await Pedometer.isAvailableAsync().catch(() => false);
       if (cancelled) return;
@@ -71,14 +74,28 @@ export function usePedometer(): UsePedometerResult {
         const requested = await Pedometer.requestPermissionsAsync();
         granted = requested.status === 'granted';
       }
-      if (cancelled) return;
-      if (!granted) {
-        setPermissionStatus('denied');
-        return;
-      }
-      setPermissionStatus('granted');
+      if (!cancelled) setPermissionStatus(granted ? 'granted' : 'denied');
+    }
 
-      const stored = (await getJSON<number>(STORAGE_KEYS.stepsByDay(dayKeyRef.current))) ?? 0;
+    checkPermission();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Conteo de hoy para ESTE usuario: se recarga si cambia de cuenta en el
+  // mismo dispositivo. En iOS, getStepCountAsync devuelve el conteo físico
+  // real del teléfono para hoy — es el mismo para cualquier cuenta que se
+  // pruebe en ese dispositivo el mismo día, no es posible (ni deseable)
+  // separarlo por cuenta ahí. El contador propio (Android, o si falla la
+  // API de iOS) sí queda aislado por usuario.
+  useEffect(() => {
+    if (permissionStatus !== 'granted') return;
+    let cancelled = false;
+
+    async function loadTodayForUser() {
+      const stored = (await getJSON<number>(STORAGE_KEYS.stepsByDay(userId, dayKeyRef.current))) ?? 0;
+      if (cancelled) return;
 
       if (Platform.OS === 'ios') {
         const start = new Date();
@@ -87,24 +104,25 @@ export function usePedometer(): UsePedometerResult {
           const result = await Pedometer.getStepCountAsync(start, new Date());
           if (cancelled) return;
           setTodaySteps(result.steps);
-          setJSON(STORAGE_KEYS.stepsByDay(dayKeyRef.current), result.steps);
+          setJSON(STORAGE_KEYS.stepsByDay(userId, dayKeyRef.current), result.steps);
         } catch {
           if (!cancelled) setTodaySteps(stored);
         }
       } else {
-        if (!cancelled) setTodaySteps(stored);
+        setTodaySteps(stored);
       }
     }
 
-    bootstrap();
+    loadTodayForUser();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId, permissionStatus]);
 
   // Única suscripción en vivo al sensor real. watchStepCount entrega el total
   // acumulado desde que se empezó a escuchar, no un delta — hay que restar
-  // el valor anterior nosotros mismos.
+  // el valor anterior nosotros mismos. No depende del usuario: los pasos que
+  // lleguen se atribuyen a quien esté activo en ese momento.
   useEffect(() => {
     if (permissionStatus !== 'granted') return;
 

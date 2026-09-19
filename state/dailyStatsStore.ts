@@ -19,12 +19,12 @@ function emptyStats(date: string): DailyStats {
   return { date, stepsWalk: 0, stepsRun: 0, secondsWalk: 0, secondsRun: 0, kcalMet: 0, kcalStride: 0 };
 }
 
-async function loadDay(date: string): Promise<DailyStats> {
-  return (await getJSON<DailyStats>(STORAGE_KEYS.dailyStats(date))) ?? emptyStats(date);
+async function loadDay(userId: string, date: string): Promise<DailyStats> {
+  return (await getJSON<DailyStats>(STORAGE_KEYS.dailyStats(userId, date))) ?? emptyStats(date);
 }
 
-function saveDay(stats: DailyStats): Promise<void> {
-  return setJSON(STORAGE_KEYS.dailyStats(stats.date), stats);
+function saveDay(userId: string, stats: DailyStats): Promise<void> {
+  return setJSON(STORAGE_KEYS.dailyStats(userId, stats.date), stats);
 }
 
 function replaceInHistory(history: DailyStats[], updated: DailyStats): DailyStats[] {
@@ -36,6 +36,7 @@ function replaceInHistory(history: DailyStats[], updated: DailyStats): DailyStat
 }
 
 interface DailyStatsState {
+  userId: string | null;
   today: DailyStats;
   history: DailyStats[];
   totalSteps: number;
@@ -44,7 +45,7 @@ interface DailyStatsState {
   bestDaySteps: number;
   streakDays: number;
   isHydrated: boolean;
-  hydrate: () => Promise<void>;
+  hydrate: (userId: string) => Promise<void>;
   addSteps: (activity: MovementActivity, steps: number, kcalStride: number) => Promise<void>;
   addActiveSeconds: (activity: MovementActivity, seconds: number, kcalMet: number) => Promise<void>;
   evaluateGoal: (goalSteps: number) => Promise<boolean>;
@@ -56,6 +57,7 @@ function currentOrFreshToday(current: DailyStats): DailyStats {
 }
 
 export const useDailyStatsStore = create<DailyStatsState>((set, get) => ({
+  userId: null,
   today: emptyStats(todayKey()),
   history: [],
   totalSteps: 0,
@@ -65,22 +67,42 @@ export const useDailyStatsStore = create<DailyStatsState>((set, get) => ({
   streakDays: 0,
   isHydrated: false,
 
-  hydrate: async () => {
+  // Cambiar de cuenta en el mismo dispositivo debe traer los datos de ESA
+  // cuenta, no seguir mostrando los de la anterior: por eso se recarga por
+  // completo cada vez que cambia el userId, en vez de hidratar una sola vez.
+  hydrate: async (userId: string) => {
+    if (get().userId === userId && get().isHydrated) return;
+    // Evita mostrar por un instante los números de la cuenta anterior
+    // mientras se cargan los de la nueva.
+    if (get().userId !== userId) set({ isHydrated: false });
+
     const keys = lastNDateKeys(HISTORY_DAYS);
     const [history, totalSteps, totalSecondsWalk, totalSecondsRun, bestDaySteps, streakDays] = await Promise.all([
-      Promise.all(keys.map(loadDay)),
-      getJSON<number>(STORAGE_KEYS.totalSteps).then((v) => v ?? 0),
-      getJSON<number>(STORAGE_KEYS.totalSecondsWalk).then((v) => v ?? 0),
-      getJSON<number>(STORAGE_KEYS.totalSecondsRun).then((v) => v ?? 0),
-      getJSON<number>(STORAGE_KEYS.bestDaySteps).then((v) => v ?? 0),
-      getJSON<number>(STORAGE_KEYS.streakDays).then((v) => v ?? 0),
+      Promise.all(keys.map((date) => loadDay(userId, date))),
+      getJSON<number>(STORAGE_KEYS.totalSteps(userId)).then((v) => v ?? 0),
+      getJSON<number>(STORAGE_KEYS.totalSecondsWalk(userId)).then((v) => v ?? 0),
+      getJSON<number>(STORAGE_KEYS.totalSecondsRun(userId)).then((v) => v ?? 0),
+      getJSON<number>(STORAGE_KEYS.bestDaySteps(userId)).then((v) => v ?? 0),
+      getJSON<number>(STORAGE_KEYS.streakDays(userId)).then((v) => v ?? 0),
     ]);
     const today = history[history.length - 1] ?? emptyStats(todayKey());
-    set({ today, history, totalSteps, totalSecondsWalk, totalSecondsRun, bestDaySteps, streakDays, isHydrated: true });
+    set({
+      userId,
+      today,
+      history,
+      totalSteps,
+      totalSecondsWalk,
+      totalSecondsRun,
+      bestDaySteps,
+      streakDays,
+      isHydrated: true,
+    });
   },
 
   addSteps: async (activity, steps, kcalStride) => {
-    if (steps <= 0) return;
+    const userId = get().userId;
+    if (!userId || steps <= 0) return;
+
     const base = currentOrFreshToday(get().today);
     const next: DailyStats = {
       ...base,
@@ -88,23 +110,25 @@ export const useDailyStatsStore = create<DailyStatsState>((set, get) => ({
       stepsRun: base.stepsRun + (activity === 'running' ? steps : 0),
       kcalStride: base.kcalStride + kcalStride,
     };
-    await saveDay(next);
+    await saveDay(userId, next);
 
     const totalSteps = get().totalSteps + steps;
-    await setJSON(STORAGE_KEYS.totalSteps, totalSteps);
+    await setJSON(STORAGE_KEYS.totalSteps(userId), totalSteps);
 
     const todayTotalSteps = next.stepsWalk + next.stepsRun;
     let bestDaySteps = get().bestDaySteps;
     if (todayTotalSteps > bestDaySteps) {
       bestDaySteps = todayTotalSteps;
-      await setJSON(STORAGE_KEYS.bestDaySteps, bestDaySteps);
+      await setJSON(STORAGE_KEYS.bestDaySteps(userId), bestDaySteps);
     }
 
     set((state) => ({ today: next, totalSteps, bestDaySteps, history: replaceInHistory(state.history, next) }));
   },
 
   addActiveSeconds: async (activity, seconds, kcalMet) => {
-    if (seconds <= 0) return;
+    const userId = get().userId;
+    if (!userId || seconds <= 0) return;
+
     const base = currentOrFreshToday(get().today);
     const next: DailyStats = {
       ...base,
@@ -112,12 +136,12 @@ export const useDailyStatsStore = create<DailyStatsState>((set, get) => ({
       secondsRun: base.secondsRun + (activity === 'running' ? seconds : 0),
       kcalMet: base.kcalMet + kcalMet,
     };
-    await saveDay(next);
+    await saveDay(userId, next);
 
     const totalSecondsWalk = get().totalSecondsWalk + (activity === 'walking' ? seconds : 0);
     const totalSecondsRun = get().totalSecondsRun + (activity === 'running' ? seconds : 0);
-    if (activity === 'walking') await setJSON(STORAGE_KEYS.totalSecondsWalk, totalSecondsWalk);
-    if (activity === 'running') await setJSON(STORAGE_KEYS.totalSecondsRun, totalSecondsRun);
+    if (activity === 'walking') await setJSON(STORAGE_KEYS.totalSecondsWalk(userId), totalSecondsWalk);
+    if (activity === 'running') await setJSON(STORAGE_KEYS.totalSecondsRun(userId), totalSecondsRun);
 
     set((state) => ({
       today: next,
@@ -128,18 +152,21 @@ export const useDailyStatsStore = create<DailyStatsState>((set, get) => ({
   },
 
   evaluateGoal: async (goalSteps) => {
+    const userId = get().userId;
+    if (!userId) return false;
+
     const today = get().today;
     const totalStepsToday = today.stepsWalk + today.stepsRun;
     if (totalStepsToday < goalSteps) return false;
 
-    const lastMetDate = await getJSON<string>(STORAGE_KEYS.lastGoalMetDate);
+    const lastMetDate = await getJSON<string>(STORAGE_KEYS.lastGoalMetDate(userId));
     if (lastMetDate === today.date) return false;
 
     const yesterdayKey = todayKey(addDays(parseDateKey(today.date), -1));
     const streak = lastMetDate === yesterdayKey ? get().streakDays + 1 : 1;
 
-    await setJSON(STORAGE_KEYS.lastGoalMetDate, today.date);
-    await setJSON(STORAGE_KEYS.streakDays, streak);
+    await setJSON(STORAGE_KEYS.lastGoalMetDate(userId), today.date);
+    await setJSON(STORAGE_KEYS.streakDays(userId), streak);
     set({ streakDays: streak });
     return true;
   },

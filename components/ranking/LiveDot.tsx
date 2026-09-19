@@ -18,9 +18,11 @@ export function LiveDot({ lastActiveAt }: LiveDotProps) {
     opacity.value = withRepeat(withSequence(withTiming(0.3, { duration: 700 }), withTiming(1, { duration: 700 })), -1, true);
   }, [isLive, opacity]);
 
-  if (!isLive) return null;
-
+  // Todos los hooks deben correr siempre en el mismo orden: el return
+  // condicional va después de useAnimatedStyle, nunca antes.
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  if (!isLive) return null;
 
   return <Animated.View style={[styles.dot, animatedStyle]} />;
 }

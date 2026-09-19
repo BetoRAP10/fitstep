@@ -4,14 +4,16 @@ export const STORAGE_KEYS = {
   profile: 'fitstep.profile',
   localAccounts: 'fitstep.localAccounts',
   localSession: 'fitstep.localSession',
-  stepsByDay: (dateKey: string) => `fitstep.steps.${dateKey}`,
-  dailyStats: (dateKey: string) => `fitstep.dailyStats.${dateKey}`,
-  totalSteps: 'fitstep.stats.totalSteps',
-  totalSecondsWalk: 'fitstep.stats.totalSecondsWalk',
-  totalSecondsRun: 'fitstep.stats.totalSecondsRun',
-  bestDaySteps: 'fitstep.stats.bestDaySteps',
-  streakDays: 'fitstep.stats.streakDays',
-  lastGoalMetDate: 'fitstep.stats.lastGoalMetDate',
+  // Ligadas al usuario: dos cuentas en el mismo dispositivo no deben
+  // heredarse pasos, calorías ni rachas entre sí.
+  stepsByDay: (userId: string, dateKey: string) => `fitstep.steps.${userId}.${dateKey}`,
+  dailyStats: (userId: string, dateKey: string) => `fitstep.dailyStats.${userId}.${dateKey}`,
+  totalSteps: (userId: string) => `fitstep.stats.${userId}.totalSteps`,
+  totalSecondsWalk: (userId: string) => `fitstep.stats.${userId}.totalSecondsWalk`,
+  totalSecondsRun: (userId: string) => `fitstep.stats.${userId}.totalSecondsRun`,
+  bestDaySteps: (userId: string) => `fitstep.stats.${userId}.bestDaySteps`,
+  streakDays: (userId: string) => `fitstep.stats.${userId}.streakDays`,
+  lastGoalMetDate: (userId: string) => `fitstep.stats.${userId}.lastGoalMetDate`,
   biometricLockEnabled: 'fitstep.biometricLockEnabled',
 } as const;
 
