@@ -3,19 +3,12 @@ import { Platform } from 'react-native';
 import { Pedometer } from 'expo-sensors';
 import { getJSON, setJSON, STORAGE_KEYS } from '@/services/storage';
 import { todayKey } from '@/utils/date';
-import { useDemoSteps } from '@/hooks/useDemoSteps';
-import type { DemoActivity } from '@/state/profileStore';
 
 export type PedometerPermissionStatus = 'checking' | 'granted' | 'denied' | 'unavailable';
 
 export interface StepEvent {
   timestamp: number;
   delta: number;
-}
-
-interface UsePedometerOptions {
-  demoMode: boolean;
-  demoActivity: DemoActivity;
 }
 
 interface UsePedometerResult {
@@ -25,7 +18,7 @@ interface UsePedometerResult {
   requestPermission: () => void;
 }
 
-export function usePedometer({ demoMode, demoActivity }: UsePedometerOptions): UsePedometerResult {
+export function usePedometer(): UsePedometerResult {
   const [permissionStatus, setPermissionStatus] = useState<PedometerPermissionStatus>('checking');
   const [todaySteps, setTodaySteps] = useState(0);
   const [lastEvent, setLastEvent] = useState<StepEvent | null>(null);
@@ -61,14 +54,6 @@ export function usePedometer({ demoMode, demoActivity }: UsePedometerOptions): U
   // getStepCountAsync desde las 00:00; en Android esa API no existe, así que
   // se parte del contador propio guardado en AsyncStorage.
   useEffect(() => {
-    if (demoMode) {
-      setPermissionStatus('granted');
-      getJSON<number>(STORAGE_KEYS.stepsByDay(dayKeyRef.current)).then((stored) => {
-        setTodaySteps(stored ?? 0);
-      });
-      return;
-    }
-
     let cancelled = false;
 
     async function bootstrap() {
@@ -115,13 +100,13 @@ export function usePedometer({ demoMode, demoActivity }: UsePedometerOptions): U
     return () => {
       cancelled = true;
     };
-  }, [demoMode]);
+  }, []);
 
   // Única suscripción en vivo al sensor real. watchStepCount entrega el total
   // acumulado desde que se empezó a escuchar, no un delta — hay que restar
   // el valor anterior nosotros mismos.
   useEffect(() => {
-    if (demoMode || permissionStatus !== 'granted') return;
+    if (permissionStatus !== 'granted') return;
 
     watchBaselineRef.current = null;
     const subscription = Pedometer.watchStepCount((result) => {
@@ -135,9 +120,7 @@ export function usePedometer({ demoMode, demoActivity }: UsePedometerOptions): U
     });
 
     return () => subscription.remove();
-  }, [demoMode, permissionStatus, addSteps]);
-
-  useDemoSteps({ enabled: demoMode, mode: demoActivity, onStep: addSteps });
+  }, [permissionStatus, addSteps]);
 
   const requestPermission = useCallback(() => {
     setPermissionStatus('checking');

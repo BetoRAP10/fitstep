@@ -21,10 +21,7 @@ const ActivityContext = createContext<ActivityContextValue | null>(null);
 // una sola vez en la raíz de (tabs). Hoy, Ranking y Perfil solo leen de aquí.
 export function ActivityProvider({ children }: { children: ReactNode }) {
   const { profile } = useProfile();
-  const demoMode = profile?.demoModeEnabled ?? false;
-  const demoActivity = profile?.demoActivity ?? 'walking';
-
-  const pedometer = usePedometer({ demoMode, demoActivity });
+  const pedometer = usePedometer();
   const activity = useActivity({
     lastStepEvent: pedometer.lastEvent,
     enabled: pedometer.permissionStatus === 'granted',

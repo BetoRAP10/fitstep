@@ -44,8 +44,6 @@ export const localAuthService: AuthService = {
       heightCm: input.heightCm,
       weightKg: input.weightKg,
       dailyGoalSteps: input.dailyGoalSteps,
-      demoModeEnabled: false,
-      demoActivity: 'walking',
     };
     const account: LocalAccount = {
       id: `local-${Date.now()}`,

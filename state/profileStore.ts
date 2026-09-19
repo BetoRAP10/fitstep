@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { getJSON, setJSON, STORAGE_KEYS } from '@/services/storage';
 
 export type Sex = 'male' | 'female' | 'unspecified';
-export type DemoActivity = 'walking' | 'running' | 'alternating';
 
 export interface Profile {
   name: string;
@@ -11,8 +10,6 @@ export interface Profile {
   heightCm: number;
   weightKg: number;
   dailyGoalSteps: number;
-  demoModeEnabled: boolean;
-  demoActivity: DemoActivity;
 }
 
 export const DEFAULT_DAILY_GOAL = 8000;
@@ -21,10 +18,8 @@ interface ProfileState {
   profile: Profile | null;
   isHydrated: boolean;
   hydrate: () => Promise<void>;
-  saveProfile: (profile: Omit<Profile, 'demoActivity'> & { demoActivity?: DemoActivity }) => Promise<void>;
+  saveProfile: (profile: Profile) => Promise<void>;
   updateProfile: (patch: Partial<Profile>) => Promise<void>;
-  setDemoMode: (enabled: boolean) => Promise<void>;
-  setDemoActivity: (activity: DemoActivity) => Promise<void>;
   clear: () => Promise<void>;
 }
 
@@ -38,9 +33,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   },
 
   saveProfile: async (profile) => {
-    const complete: Profile = { demoActivity: 'walking', ...profile };
-    await setJSON(STORAGE_KEYS.profile, complete);
-    set({ profile: complete });
+    await setJSON(STORAGE_KEYS.profile, profile);
+    set({ profile });
   },
 
   updateProfile: async (patch: Partial<Profile>) => {
@@ -49,14 +43,6 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     const next = { ...current, ...patch };
     await setJSON(STORAGE_KEYS.profile, next);
     set({ profile: next });
-  },
-
-  setDemoMode: async (enabled: boolean) => {
-    await get().updateProfile({ demoModeEnabled: enabled });
-  },
-
-  setDemoActivity: async (activity: DemoActivity) => {
-    await get().updateProfile({ demoActivity: activity });
   },
 
   clear: async () => {

@@ -20,8 +20,6 @@ function rowToProfile(row: ProfileRow): Profile {
     heightCm: row.height_cm,
     weightKg: row.weight_kg,
     dailyGoalSteps: row.daily_goal,
-    demoModeEnabled: false,
-    demoActivity: 'walking',
   };
 }
 

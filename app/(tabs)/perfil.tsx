@@ -10,7 +10,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { AuthTextField } from '@/components/auth/AuthTextField';
 import { SegmentedControl } from '@/components/auth/SegmentedControl';
 import { Stepper } from '@/components/ui/Stepper';
-import type { Sex, DemoActivity } from '@/state/profileStore';
+import type { Sex } from '@/state/profileStore';
 
 const SEX_LABEL: Record<Sex, string> = {
   male: 'Masculino',
@@ -24,12 +24,6 @@ const SEX_OPTIONS: { label: string; value: Sex }[] = [
   { label: 'Prefiero no decir', value: 'unspecified' },
 ];
 
-const DEMO_ACTIVITY_OPTIONS: { label: string; value: DemoActivity }[] = [
-  { label: 'Caminar', value: 'walking' },
-  { label: 'Correr', value: 'running' },
-  { label: 'Alternar', value: 'alternating' },
-];
-
 const QUICK_GOALS = [5000, 8000, 10000, 12000];
 
 function formatHours(totalSeconds: number): string {
@@ -39,7 +33,7 @@ function formatHours(totalSeconds: number): string {
 }
 
 export default function PerfilScreen() {
-  const { profile, updateProfile, setDemoMode, setDemoActivity } = useProfile();
+  const { profile, updateProfile } = useProfile();
   const { signOut, biometricAvailable, biometricLockEnabled, setBiometricLockEnabled } = useAuth();
   const { totalSteps, bestDaySteps, streakDays, totalSecondsWalk, totalSecondsRun } = useDailyStatsStore();
 
@@ -138,27 +132,6 @@ export default function PerfilScreen() {
             <StatBlock label="Caminando" value={formatHours(totalSecondsWalk)} />
             <StatBlock label="Corriendo" value={formatHours(totalSecondsRun)} />
           </View>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.switchRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.switchLabel}>Modo demo</Text>
-              <Text style={styles.switchHint}>Simula pasos para probar la app sin caminar.</Text>
-            </View>
-            <Switch
-              value={profile.demoModeEnabled}
-              onValueChange={setDemoMode}
-              trackColor={{ false: colors.border, true: colors.accentMuted }}
-              thumbColor={profile.demoModeEnabled ? colors.accent : colors.textSecondary}
-            />
-          </View>
-
-          {profile.demoModeEnabled && (
-            <View style={styles.demoActivityBlock}>
-              <SegmentedControl options={DEMO_ACTIVITY_OPTIONS} value={profile.demoActivity} onChange={setDemoActivity} />
-            </View>
-          )}
         </View>
 
         {biometricAvailable && (
@@ -331,9 +304,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  demoActivityBlock: {
-    marginTop: -spacing.md,
   },
   signOut: {
     marginTop: spacing.md,

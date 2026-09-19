@@ -17,7 +17,7 @@ const COPY: Record<PermissionStateProps['status'], { title: string; body: string
   },
   unavailable: {
     title: 'Este dispositivo no tiene podómetro',
-    body: 'No encontramos un sensor de pasos compatible. Puedes activar el modo demo en Perfil para probar la app de todas formas.',
+    body: 'No encontramos un sensor de pasos compatible con este dispositivo.',
     icon: 'alert-triangle',
   },
 };
