@@ -5,9 +5,14 @@ export const STORAGE_KEYS = {
   localAccounts: 'fitstep.localAccounts',
   localSession: 'fitstep.localSession',
   stepsByDay: (dateKey: string) => `fitstep.steps.${dateKey}`,
+  dailyStats: (dateKey: string) => `fitstep.dailyStats.${dateKey}`,
+  totalSteps: 'fitstep.stats.totalSteps',
+  totalSecondsWalk: 'fitstep.stats.totalSecondsWalk',
+  totalSecondsRun: 'fitstep.stats.totalSecondsRun',
   bestDaySteps: 'fitstep.stats.bestDaySteps',
   streakDays: 'fitstep.stats.streakDays',
   lastGoalMetDate: 'fitstep.stats.lastGoalMetDate',
+  biometricLockEnabled: 'fitstep.biometricLockEnabled',
 } as const;
 
 export async function getJSON<T>(key: string): Promise<T | null> {

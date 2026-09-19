@@ -11,6 +11,11 @@ export function useAuth() {
   const signOut = useAuthStore((s) => s.signOut);
   const requestPasswordReset = useAuthStore((s) => s.requestPasswordReset);
   const clearError = useAuthStore((s) => s.clearError);
+  const isUnlocked = useAuthStore((s) => s.isUnlocked);
+  const biometricLockEnabled = useAuthStore((s) => s.biometricLockEnabled);
+  const biometricAvailable = useAuthStore((s) => s.biometricAvailable);
+  const unlock = useAuthStore((s) => s.unlock);
+  const setBiometricLockEnabled = useAuthStore((s) => s.setBiometricLockEnabled);
 
   return {
     session,
@@ -23,5 +28,10 @@ export function useAuth() {
     signOut,
     requestPasswordReset,
     clearError,
+    isUnlocked,
+    biometricLockEnabled,
+    biometricAvailable,
+    unlock,
+    setBiometricLockEnabled,
   };
 }

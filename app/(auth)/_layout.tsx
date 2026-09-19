@@ -4,7 +4,11 @@ import { colors } from '@/theme';
 
 export default function AuthLayout() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isUnlocked = useAuthStore((s) => s.isUnlocked);
 
+  if (isAuthenticated && !isUnlocked) {
+    return <Redirect href="/bloqueo" />;
+  }
   if (isAuthenticated) {
     return <Redirect href="/(tabs)" />;
   }

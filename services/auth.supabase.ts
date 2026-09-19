@@ -21,6 +21,7 @@ function rowToProfile(row: ProfileRow): Profile {
     weightKg: row.weight_kg,
     dailyGoalSteps: row.daily_goal,
     demoModeEnabled: false,
+    demoActivity: 'walking',
   };
 }
 
@@ -33,6 +34,9 @@ function translateAuthError(message: string): string {
   }
   if (/password/i.test(message)) {
     return 'La contraseña debe tener al menos 8 caracteres.';
+  }
+  if (/rate limit/i.test(message)) {
+    return 'Se enviaron demasiados correos en poco tiempo. Espera unos minutos e intenta de nuevo.';
   }
   return 'Ocurrió un problema. Intenta de nuevo.';
 }

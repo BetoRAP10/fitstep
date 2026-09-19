@@ -74,7 +74,12 @@ export default function RootLayout() {
         >
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
+          <Stack.Screen name="bloqueo" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="calorias-detalle"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
         </Stack>
       </View>
     </SafeAreaProvider>

@@ -14,4 +14,8 @@ export const ACTIVITY_THRESHOLDS = {
   accelerometerIntervalMs: 50,
   accelerometerWindowSeconds: 2,
   hysteresisSeconds: 8,
+  // RMS de la magnitud del acelerómetro (en g) por encima del cual se
+  // considera "intensidad alta". Empírico: correr produce picos mucho
+  // mayores que caminar; ajustar según pruebas en dispositivo real.
+  highIntensityRmsThreshold: 0.35,
 } as const;

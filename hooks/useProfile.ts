@@ -8,6 +8,7 @@ export function useProfile() {
   const saveProfile = useProfileStore((s) => s.saveProfile);
   const updateProfile = useProfileStore((s) => s.updateProfile);
   const setDemoMode = useProfileStore((s) => s.setDemoMode);
+  const setDemoActivity = useProfileStore((s) => s.setDemoActivity);
 
-  return { profile, isHydrated, saveProfile, updateProfile, setDemoMode };
+  return { profile, isHydrated, saveProfile, updateProfile, setDemoMode, setDemoActivity };
 }

@@ -18,7 +18,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.fitstep.app",
       "infoPlist": {
-        "NSMotionUsageDescription": "FitStep usa el sensor de movimiento para contar tus pasos y calcular tu progreso diario."
+        "NSMotionUsageDescription": "FitStep usa el sensor de movimiento para contar tus pasos y calcular tu progreso diario.",
+        "NSFaceIDUsageDescription": "FitStep usa Face ID para proteger el acceso a tu cuenta."
       }
     },
     "android": {
