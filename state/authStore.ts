@@ -63,6 +63,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isHydrated: true,
       });
     } else {
+      await useProfileStore.getState().clear();
       set({ biometricLockEnabled, biometricAvailable, isHydrated: true });
     }
   },

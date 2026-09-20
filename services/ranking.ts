@@ -1,4 +1,5 @@
 import type { ActivityState } from '@/constants/activity';
+import type { DailyStats } from '@/state/dailyStatsStore';
 import { isSupabaseConfigured } from './supabaseClient';
 import { localRankingService } from './ranking.local';
 import { supabaseRankingService } from './ranking.supabase';
@@ -18,8 +19,8 @@ export interface RankingEntry {
 export interface SubmitScoreInput {
   userId: string;
   name: string;
-  kcal: number;
   activity: ActivityState;
+  stats: DailyStats;
 }
 
 export interface RankingService {

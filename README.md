@@ -2,7 +2,9 @@
 
 App de actividad física hecha con Expo + React Native + TypeScript. Cuenta pasos en tiempo real, detecta si estás quieto, caminando o corriendo, calcula calorías con dos métodos distintos, y compara tu progreso contra el resto en un ranking.
 
-Corre completa en **Expo Go** — sin development build, sin código nativo propio.
+Corre en **Expo Go** para sensores, autenticación y navegación. Face ID en iOS
+requiere una development build; Touch ID/biometría Android sí se pueden probar
+en Expo Go.
 
 ## Cómo correrla
 
@@ -36,12 +38,14 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_xxxxxxxx
 
 Usa siempre la **clave publicable/anon**, nunca la `service_role` ni la `secret` — esas no deben estar en una app cliente porque quedan visibles en el bundle.
 
-Si no defines estas variables, la app arranca en **modo local**: cuentas y ranking simulados con AsyncStorage, sin backend. Es la misma app, solo cambia de dónde vienen los datos (`services/auth.ts` y `services/ranking.ts` deciden automáticamente).
+Supabase es obligatorio para una instalación real. Para una demostración local
+sin backend puedes añadir `EXPO_PUBLIC_ALLOW_LOCAL_DEMO=true`; este modo guarda
+credenciales de prueba en el dispositivo y no debe usarse con datos reales.
 
 ## Conectar tu propio Supabase
 
 1. Crea un proyecto en [supabase.com](https://supabase.com).
-2. En **Authentication → Providers → Email**, si quieres poder iniciar sesión inmediatamente después de registrarte (sin revisar el correo), desactiva **"Confirm email"**. Ten en cuenta que el servicio de correo compartido de Supabase tiene un límite muy bajo (2 correos/hora) si no configuras tu propio SMTP — con "Confirm email" desactivado no depende de eso.
+2. En **Authentication → Providers → Email**, decide si pedirás confirmación de correo. Ambos flujos funcionan: la migración crea el perfil desde los metadatos de Auth y, si activas confirmación, la app pedirá verificar el correo antes de iniciar sesión. Configura SMTP para producción.
 3. Corre las migraciones incluidas en `supabase/migrations/` contra tu proyecto:
    ```bash
    npx supabase login
@@ -50,7 +54,7 @@ Si no defines estas variables, la app arranca en **modo local**: cuentas y ranki
    ```
    Esto crea:
    - **`profiles`**: datos privados del usuario (nombre, sexo, edad, estatura, peso, meta diaria), con RLS para que cada quien solo vea y edite el suyo.
-   - **`daily_stats`**: pasos/segundos/calorías por día y por usuario.
+   - **`daily_stats`**: pasos/segundos/calorías por día y por usuario, sincronizados desde el proveedor global aunque no se abra Ranking.
    - **`ranking_public`**: vista que expone solo nombre, calorías, actividad y fecha — nunca peso, estatura, edad, sexo ni correo.
 4. Copia la URL y la clave publicable del proyecto (Project Settings → API) a tu `.env`.
 
@@ -81,12 +85,12 @@ Toda la lógica de quieto/caminando/corriendo vive en `hooks/useActivity.ts`, pe
 
 ## Limitaciones conocidas
 
-- **En Expo Go, el conteo de pasos se detiene si cierras la app por completo** (no solo minimizarla). Es una limitación de Expo Go, no de la app — en una build nativa con `expo-task-manager` se podría contar en segundo plano.
+- Expo no entrega eventos del podómetro mientras la app está en segundo plano. Al volver, iOS recupera el total diario con Core Motion; Android no puede recuperar esos pasos con `expo-sensors` y requiere una integración nativa como Health Connect para conteo en segundo plano.
 - El **acelerómetro consume batería** más rápido de lo normal mientras la app está abierta y detectando actividad.
 - El modo túnel (`--tunnel`) es más lento que la red local porque todo el tráfico pasa por los servidores de Expo/ngrok.
 - En el ranking respaldado por Supabase, la flecha de "subiste/bajaste respecto a ayer" queda neutra (no calculamos un snapshot histórico de posiciones); en el modo local simulado sí se ve el movimiento.
 - El bloqueo con Face ID/huella se reinicia en cada arranque en frío de la app (cerrarla del todo y volver a abrirla), no al simplemente pasarla a segundo plano.
-- Los cambios de perfil (nombre, peso, estatura, meta) después del registro se guardan localmente pero no se vuelven a sincronizar con la tabla `profiles` de Supabase todavía.
+- Face ID en iOS no se puede probar con Expo Go; usa una development build.
 
 ## Pruebas
 

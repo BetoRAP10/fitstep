@@ -103,7 +103,7 @@ export const localRankingService: RankingService = {
     const realEntries: RankingEntry[] = Array.from(realUsers.values()).map((entry) => ({
       userId: entry.userId,
       name: entry.name,
-      kcal: Math.round(entry.kcal),
+      kcal: Math.round(entry.stats.kcalMet),
       activity: entry.activity,
       lastActiveAt: Date.now(),
       deltaRank: 0,

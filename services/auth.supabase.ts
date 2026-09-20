@@ -46,11 +46,21 @@ export const supabaseAuthService: AuthService = {
     const { data, error } = await supabase.auth.signUp({
       email: input.email,
       password: input.password,
+      options: {
+        data: {
+          display_name: input.name,
+          sex: input.sex,
+          age: input.age,
+          height_cm: input.heightCm,
+          weight_kg: input.weightKg,
+          daily_goal: input.dailyGoalSteps,
+        },
+      },
     });
     if (error) throw new Error(translateAuthError(error.message));
 
     const user = data.user;
-    if (!user) {
+    if (!user || !data.session) {
       throw new Error('Revisa tu correo para confirmar la cuenta y luego inicia sesión.');
     }
 
@@ -111,5 +121,24 @@ export const supabaseAuthService: AuthService = {
     if (error || !profileRow) return null;
 
     return { userId: user.id, email: user.email ?? '', profile: rowToProfile(profileRow as ProfileRow) };
+  },
+
+  async updateProfile(userId: string, profile: Profile): Promise<Profile> {
+    if (!supabase) throw new Error('Supabase no está configurado.');
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        display_name: profile.name,
+        sex: profile.sex,
+        age: profile.age,
+        height_cm: profile.heightCm,
+        weight_kg: profile.weightKg,
+        daily_goal: profile.dailyGoalSteps,
+      })
+      .eq('id', userId)
+      .select('*')
+      .single();
+    if (error || !data) throw new Error('No pudimos guardar los cambios de tu perfil.');
+    return rowToProfile(data as ProfileRow);
   },
 };

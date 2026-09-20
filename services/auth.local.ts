@@ -90,4 +90,14 @@ export const localAuthService: AuthService = {
     if (!account) return null;
     return { userId: account.id, email: account.email, profile: account.profile };
   },
+
+  async updateProfile(userId: string, profile: Profile): Promise<Profile> {
+    const accounts = await loadAccounts();
+    const index = accounts.findIndex((account) => account.id === userId);
+    if (index === -1) throw new Error('No encontramos la cuenta local.');
+    const next = [...accounts];
+    next[index] = { ...next[index], profile };
+    await setJSON(STORAGE_KEYS.localAccounts, next);
+    return profile;
+  },
 };

@@ -65,15 +65,16 @@ export const supabaseRankingService: RankingService = {
 
   async submitScore(entry: SubmitScoreInput) {
     if (!supabase) return;
-    await supabase.from('daily_stats').upsert(
-      {
-        user_id: entry.userId,
-        date: todayKey(),
-        kcal_met: entry.kcal,
-        activity: entry.activity,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id,date' }
-    );
+    const { error } = await supabase.rpc('submit_daily_stats', {
+      p_date: entry.stats.date,
+      p_steps_walk: entry.stats.stepsWalk,
+      p_steps_run: entry.stats.stepsRun,
+      p_seconds_walk: entry.stats.secondsWalk,
+      p_seconds_run: entry.stats.secondsRun,
+      p_kcal_met: entry.stats.kcalMet,
+      p_kcal_stride: entry.stats.kcalStride,
+      p_activity: entry.activity,
+    });
+    if (error) throw new Error('No pudimos sincronizar tu actividad.');
   },
 };

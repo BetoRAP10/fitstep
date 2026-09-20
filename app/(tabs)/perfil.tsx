@@ -44,10 +44,12 @@ export default function PerfilScreen() {
   const [draftHeight, setDraftHeight] = useState(170);
   const [draftWeight, setDraftWeight] = useState(70);
   const [draftGoal, setDraftGoal] = useState(8000);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   if (!profile) return null;
 
   const startEditing = () => {
+    setSaveError(null);
     setDraftName(profile.name);
     setDraftSex(profile.sex);
     setDraftAge(profile.age);
@@ -58,15 +60,19 @@ export default function PerfilScreen() {
   };
 
   const saveEditing = async () => {
-    await updateProfile({
-      name: draftName.trim() || profile.name,
-      sex: draftSex,
-      age: draftAge,
-      heightCm: draftHeight,
-      weightKg: draftWeight,
-      dailyGoalSteps: draftGoal,
-    });
-    setEditing(false);
+    try {
+      await updateProfile({
+        name: draftName.trim() || profile.name,
+        sex: draftSex,
+        age: draftAge,
+        heightCm: draftHeight,
+        weightKg: draftWeight,
+        dailyGoalSteps: draftGoal,
+      });
+      setEditing(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'No pudimos guardar los cambios.');
+    }
   };
 
   return (
@@ -111,6 +117,7 @@ export default function PerfilScreen() {
                 })}
               </View>
             </View>
+            {saveError ? <Text style={styles.saveError}>{saveError}</Text> : null}
           </View>
         ) : (
           <View style={styles.card}>
@@ -307,5 +314,10 @@ const styles = StyleSheet.create({
   },
   signOut: {
     marginTop: spacing.md,
+  },
+  saveError: {
+    fontFamily: fontFamily.textRegular,
+    fontSize: fontSize.sm,
+    color: colors.danger,
   },
 });

@@ -8,12 +8,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0B0F0C",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0B0F0C"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.fitstep.app",

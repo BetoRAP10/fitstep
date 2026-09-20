@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import { getJSON, setJSON, STORAGE_KEYS } from '@/services/storage';
+import { getJSON, setJSON, removeItem, STORAGE_KEYS } from '@/services/storage';
+import { authService } from '@/services/auth';
+import { useAuthStore } from '@/state/authStore';
 
 export type Sex = 'male' | 'female' | 'unspecified';
 
@@ -41,11 +43,15 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     const current = get().profile;
     if (!current) return;
     const next = { ...current, ...patch };
-    await setJSON(STORAGE_KEYS.profile, next);
-    set({ profile: next });
+    const userId = useAuthStore.getState().session?.userId;
+    if (!userId) throw new Error('No hay una sesión activa.');
+    const saved = await authService.updateProfile(userId, next);
+    await setJSON(STORAGE_KEYS.profile, saved);
+    set({ profile: saved });
   },
 
   clear: async () => {
+    await removeItem(STORAGE_KEYS.profile);
     set({ profile: null });
   },
 }));

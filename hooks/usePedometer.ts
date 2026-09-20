@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { Pedometer } from 'expo-sensors';
 import { getJSON, setJSON, STORAGE_KEYS } from '@/services/storage';
 import { todayKey } from '@/utils/date';
@@ -29,6 +29,19 @@ export function usePedometer(userId: string): UsePedometerResult {
   const watchBaselineRef = useRef<number | null>(null);
   const userIdRef = useRef(userId);
   userIdRef.current = userId;
+
+  const refreshToday = useCallback(async () => {
+    if (Platform.OS !== 'ios') return;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    try {
+      const result = await Pedometer.getStepCountAsync(start, new Date());
+      setTodaySteps(result.steps);
+      await setJSON(STORAGE_KEYS.stepsByDay(userIdRef.current, dayKeyRef.current), result.steps);
+    } catch {
+      // Mantener el último valor local si Core Motion no puede responder.
+    }
+  }, []);
 
   const addSteps = useCallback((delta: number, timestamp: number) => {
     if (delta <= 0) return;
@@ -98,16 +111,8 @@ export function usePedometer(userId: string): UsePedometerResult {
       if (cancelled) return;
 
       if (Platform.OS === 'ios') {
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
-        try {
-          const result = await Pedometer.getStepCountAsync(start, new Date());
-          if (cancelled) return;
-          setTodaySteps(result.steps);
-          setJSON(STORAGE_KEYS.stepsByDay(userId, dayKeyRef.current), result.steps);
-        } catch {
-          if (!cancelled) setTodaySteps(stored);
-        }
+        await refreshToday();
+        if (cancelled) return;
       } else {
         setTodaySteps(stored);
       }
@@ -117,7 +122,17 @@ export function usePedometer(userId: string): UsePedometerResult {
     return () => {
       cancelled = true;
     };
-  }, [userId, permissionStatus]);
+  }, [userId, permissionStatus, refreshToday]);
+
+  // Expo no entrega eventos del podómetro mientras la app está en segundo
+  // plano. En iOS Core Motion sí permite recuperar el total diario al volver.
+  useEffect(() => {
+    if (permissionStatus !== 'granted') return;
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') void refreshToday();
+    });
+    return () => subscription.remove();
+  }, [permissionStatus, refreshToday]);
 
   // Única suscripción en vivo al sensor real. watchStepCount entrega el total
   // acumulado desde que se empezó a escuchar, no un delta — hay que restar

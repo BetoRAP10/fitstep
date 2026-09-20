@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDailyStatsStore } from '@/state/dailyStatsStore';
 import { strideLengthMeters, strideCalories, metForCadence, metCaloriesForSeconds } from '@/utils/calories';
 import type { Profile } from '@/state/profileStore';
+import { useScoreSync } from '@/hooks/useScoreSync';
 
 interface ActivityContextValue extends ActivitySnapshot {
   todaySteps: number;
@@ -33,9 +34,10 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   const hydrateStats = useDailyStatsStore((s) => s.hydrate);
   const isStatsHydrated = useDailyStatsStore((s) => s.isHydrated);
-  const addSteps = useDailyStatsStore((s) => s.addSteps);
+  const reconcilePedometerSteps = useDailyStatsStore((s) => s.reconcilePedometerSteps);
   const addActiveSeconds = useDailyStatsStore((s) => s.addActiveSeconds);
   const evaluateGoal = useDailyStatsStore((s) => s.evaluateGoal);
+  const today = useDailyStatsStore((s) => s.today);
 
   // Se re-hidrata cada vez que cambia el usuario (no solo la primera vez),
   // para que cambiar de cuenta en el mismo dispositivo traiga sus propios
@@ -52,21 +54,26 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   const lastGoalCheckRef = useRef(0);
   const [goalJustReached, setGoalJustReached] = useState(false);
 
-  // Atribuye cada lote de pasos entrantes a la actividad vigente en ese
-  // instante (así el desglose caminando/corriendo refleja lo que de verdad
-  // ocurrió, no solo el estado actual al momento de leer la pantalla).
+  // El total del podómetro es la fuente de verdad. Así se recuperan en iOS
+  // los pasos registrados mientras la app estaba en segundo plano y tampoco
+  // se descartan los primeros pasos durante la histéresis de actividad.
   useEffect(() => {
-    const event = pedometer.lastEvent;
     const currentProfile = profileRef.current;
-    if (!event || event.delta <= 0 || !currentProfile) return;
+    if (!currentProfile || !isStatsHydrated) return;
 
-    const currentActivity = activityRef.current.state;
-    if (currentActivity === 'still') return;
-
+    const currentActivity = activityRef.current.state === 'running' ? 'running' : 'walking';
     const strideMeters = strideLengthMeters(currentProfile.heightCm, currentActivity, currentProfile.sex);
-    const kcalStride = strideCalories(event.delta, strideMeters, currentProfile.weightKg, currentActivity);
-    addSteps(currentActivity, event.delta, kcalStride);
-  }, [pedometer.lastEvent, addSteps]);
+    const kcalStridePerStep = strideCalories(1, strideMeters, currentProfile.weightKg, currentActivity);
+    void reconcilePedometerSteps(pedometer.todaySteps, currentActivity, kcalStridePerStep);
+  }, [pedometer.todaySteps, isStatsHydrated, reconcilePedometerSteps]);
+
+  useScoreSync({
+    session,
+    profile,
+    stats: today,
+    activity: activity.state,
+    enabled: isStatsHydrated,
+  });
 
   // Acumulación MET oficial: cada segundo de actividad suma
   // MET(actividad, cadencia) × peso / 3600 al total del día.

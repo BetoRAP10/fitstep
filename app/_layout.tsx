@@ -41,8 +41,10 @@ export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    hydrateAuth();
-    hydrateProfile();
+    void (async () => {
+      await hydrateAuth();
+      await hydrateProfile();
+    })();
   }, [hydrateAuth, hydrateProfile]);
 
   useEffect(() => {

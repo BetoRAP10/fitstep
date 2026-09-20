@@ -26,9 +26,27 @@ export interface AuthService {
   signOut(): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   restoreSession(): Promise<AuthResult | null>;
+  updateProfile(userId: string, profile: Profile): Promise<Profile>;
 }
 
-// Única decisión de backend en toda la app: las pantallas y el authStore
-// solo conocen AuthService, nunca si hay Supabase configurado o no.
-export const authService: AuthService = isSupabaseConfigured ? supabaseAuthService : localAuthService;
-export const authBackend: 'supabase' | 'local' = isSupabaseConfigured ? 'supabase' : 'local';
+export const isLocalDemoEnabled = process.env.EXPO_PUBLIC_ALLOW_LOCAL_DEMO === 'true';
+
+const unavailableAuthService: AuthService = {
+  async signUp() { throw new Error('Configura Supabase para crear una cuenta.'); },
+  async signIn() { throw new Error('Configura Supabase para iniciar sesión.'); },
+  async signOut() {},
+  async requestPasswordReset() { throw new Error('Configura Supabase para recuperar la contraseña.'); },
+  async restoreSession() { return null; },
+  async updateProfile(_userId, profile) { return profile; },
+};
+
+export const authService: AuthService = isSupabaseConfigured
+  ? supabaseAuthService
+  : isLocalDemoEnabled
+    ? localAuthService
+    : unavailableAuthService;
+export const authBackend: 'supabase' | 'local-demo' | 'unconfigured' = isSupabaseConfigured
+  ? 'supabase'
+  : isLocalDemoEnabled
+    ? 'local-demo'
+    : 'unconfigured';
